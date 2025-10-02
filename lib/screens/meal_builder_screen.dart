@@ -1,39 +1,10 @@
+import 'package:dietplanner/models/meal_model.dart';
 import 'package:dietplanner/screens/logs_screen.dart';
+import 'package:dietplanner/screens/restaurant_screen.dart';
 import 'package:dietplanner/widgets/nav_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:dietplanner/screens/restaurant_screen.dart';
-class Meal {
-  final String name;
-  final int calories;
-  final int protein;
-  final int carbs;
-  final int fats;
-  final DateTime date;
-
-  Meal({
-    required this.name,
-    required this.calories,
-    required this.protein,
-    required this.carbs,
-    required this.fats,
-    required this.date,
-  });
-}
-
-class MealRepository {
-  static final MealRepository _instance = MealRepository._internal();
-  factory MealRepository() => _instance;
-  MealRepository._internal();
-
-  final List<Meal> _meals = [];
-
-  void addMeal(Meal meal) {
-    _meals.add(meal);
-  }
-
-  List<Meal> get meals => _meals;
-}
-
+import 'trending_screen.dart';
+import 'feedback_screen.dart';
 
 class BuildMealScreen extends StatefulWidget {
   const BuildMealScreen({super.key});
@@ -43,28 +14,59 @@ class BuildMealScreen extends StatefulWidget {
 }
 
 class _BuildMealScreenState extends State<BuildMealScreen> {
+  List<Meal> get mealList => MealRepository().meals;
 
-  List<Map<String, dynamic>> meals = [];
+  double get totalPrice {
+    double total = 0;
+    for (var meal in mealList) {
+      total += meal.price;
+    }
+    return total;
+  }
+
+  int get totalCalories {
+    int total = 0;
+    for (var meal in mealList) {
+      total += meal.calories;
+    }
+    return total;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Build Your Meal",
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          "Build Your Meal",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.search, color: Colors.black)),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const FeedbackScreen()),
+              );
+            },
+            icon: const Icon(Icons.star_border, color: Colors.black),
+            tooltip: "Feedback",
+          ),
           IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.notifications_none, color: Colors.black)),
-          const SizedBox(width: 8),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const TrendingMealsScreen()),
+              );
+            },
+            icon: const Icon(Icons.trending_up, color: Colors.black),
+            tooltip: "Trending",
+          ),
         ],
         backgroundColor: Colors.white,
         elevation: 0,
       ),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -73,16 +75,21 @@ class _BuildMealScreenState extends State<BuildMealScreen> {
             _sectionTitle("Your Meal"),
             const SizedBox(height: 10),
 
-            if (meals.isEmpty)
-              const Text("No items added yet.",
-                  style: TextStyle(color: Colors.grey))
+            if (mealList.isEmpty)
+              const Text(
+                "No items added yet.",
+                style: TextStyle(color: Colors.grey),
+              )
             else
-              for (int i = 0; i < meals.length; i++)
-                _mealItem(meals[i]["name"], meals[i]["details"], i),
+              for (final meal in mealList)
+                _mealItem(
+                  meal.name,
+                  "${meal.calories} kcal • \$${meal.price.toStringAsFixed(2)}",
+                ),
 
             const SizedBox(height: 20),
 
-            _sectionTitle("Nutrition Summary"),
+            _sectionTitle("Nutrition & Price Summary"),
             const SizedBox(height: 10),
             _nutritionSummary(),
             const SizedBox(height: 20),
@@ -95,18 +102,18 @@ class _BuildMealScreenState extends State<BuildMealScreen> {
             Center(
               child: TextButton(
                 onPressed: () async {
-  final newMeal = await Navigator.push(
-    context,
-    MaterialPageRoute(builder: (context) => RestaurantSelectionScreen()),
-  );
-                  if (newMeal != null && newMeal is Map<String, dynamic>) {
-                    setState(() {
-                      meals.add({...newMeal, "quantity": 1});
-                    });
-                  }
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => RestaurantSelectionScreen(),
+                    ),
+                  );
+                  setState(() {});
                 },
-                child: const Text("+ Add More Items",
-                    style: TextStyle(color: Colors.deepOrange)),
+                child: const Text(
+                  "+ Add More Items",
+                  style: TextStyle(color: Colors.deepOrange),
+                ),
               ),
             ),
             const SizedBox(height: 10),
@@ -115,15 +122,19 @@ class _BuildMealScreenState extends State<BuildMealScreen> {
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepOrange,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12))),
+                  backgroundColor: Colors.deepOrange,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 onPressed: () {
                   _logMeal(context);
                 },
-                child: const Text("Log Meal",
-                    style: TextStyle(fontSize: 16, color: Colors.white)),
+                child: const Text(
+                  "Log Meal",
+                  style: TextStyle(fontSize: 16, color: Colors.white),
+                ),
               ),
             ),
           ],
@@ -151,24 +162,12 @@ class _BuildMealScreenState extends State<BuildMealScreen> {
     );
   }
 
-  //Log Meals into Repository
   void _logMeal(BuildContext context) {
-    for (var meal in meals) {
-      if (meal["quantity"] > 0) {
-        MealRepository().addMeal(Meal(
-          name: meal["name"],
-          calories: meal["calories"] * meal["quantity"],
-          protein: meal["protein"] * meal["quantity"],
-          carbs: meal["carbs"] * meal["quantity"],
-          fats: meal["fats"] * meal["quantity"],
-          date: DateTime.now(),
-        ));
-      }
-    }
+    if (mealList.isEmpty) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Meal logged successfully!")),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Meal logged successfully!")));
 
     Navigator.push(
       context,
@@ -176,20 +175,27 @@ class _BuildMealScreenState extends State<BuildMealScreen> {
     );
   }
 
-
   Widget _sectionTitle(String text) {
-    return Text(text,
-        style: const TextStyle(
-            fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87));
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.bold,
+        color: Colors.black87,
+      ),
+    );
   }
 
-  Widget _mealItem(String name, String details, int index) {
+  Widget _mealItem(String name, String details) {
     return Card(
+      color: Colors.white,
       margin: const EdgeInsets.only(bottom: 10),
       shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: Colors.grey.shade200)),
-      elevation: 3,
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      elevation: 4,
+      shadowColor: Colors.black12,
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
@@ -200,82 +206,60 @@ class _BuildMealScreenState extends State<BuildMealScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name,
-                      style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w600)),
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 2),
                   Text(details, style: const TextStyle(color: Colors.black54)),
                 ],
               ),
             ),
-            _counter(index),
           ],
         ),
       ),
     );
   }
 
-  Widget _counter(int index) {
-    return Row(
-      children: [
-        _roundButton(Icons.remove, Colors.grey.shade300, Colors.black, () {
-          setState(() {
-            if (meals[index]["quantity"] > 0) {
-              meals[index]["quantity"]--;
-            }
-          });
-        }),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(meals[index]["quantity"].toString(),
-              style: const TextStyle(fontWeight: FontWeight.bold)),
-        ),
-        _roundButton(Icons.add, Colors.deepOrange, Colors.white, () {
-          setState(() {
-            meals[index]["quantity"]++;
-          });
-        }),
-      ],
-    );
-  }
-
-  Widget _roundButton(
-      IconData icon, Color bg, Color iconColor, VoidCallback onTap) {
-    return Container(
-      decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
-      child: IconButton(
-        onPressed: onTap,
-        icon: Icon(icon, color: iconColor, size: 18),
-      ),
-    );
-  }
-
   Widget _nutritionSummary() {
     return Card(
+      color: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 2,
+      elevation: 3,
+      shadowColor: Colors.black12,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          children: const [
+          children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("Estimated Price",
-                    style: TextStyle(fontWeight: FontWeight.w600)),
-                Text("\$12.50",
-                    style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black)),
+                const Text(
+                  "Total Price",
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  "\$${totalPrice.toStringAsFixed(2)}",
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
               ],
             ),
-            SizedBox(height: 5),
+            const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("Daily Goal"),
-                Text("\$3.54", style: TextStyle(color: Colors.grey)),
+                const Text("Total Calories"),
+                Text(
+                  "$totalCalories kcal",
+                  style: const TextStyle(color: Colors.grey),
+                ),
               ],
             ),
           ],
@@ -290,17 +274,23 @@ class _BuildMealScreenState extends State<BuildMealScreen> {
       children: [
         _progressCard("Saving", "5%", Icons.savings, Colors.green),
         _progressCard("Item", "Free", Icons.local_dining, Colors.orange),
-        _progressCard("Cal", "495", Icons.local_fire_department, Colors.red),
+        _progressCard(
+          "Cal",
+          "$totalCalories",
+          Icons.local_fire_department,
+          Colors.red,
+        ),
       ],
     );
   }
 
-  Widget _progressCard(
-      String title, String value, IconData icon, Color color) {
+  Widget _progressCard(String title, String value, IconData icon, Color color) {
     return Expanded(
       child: Card(
+        color: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        elevation: 2,
+        elevation: 3,
+        shadowColor: Colors.black12,
         margin: const EdgeInsets.symmetric(horizontal: 4),
         child: Padding(
           padding: const EdgeInsets.all(12),
@@ -308,11 +298,14 @@ class _BuildMealScreenState extends State<BuildMealScreen> {
             children: [
               Icon(icon, color: color, size: 28),
               const SizedBox(height: 6),
-              Text(value,
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: color,
-                      fontSize: 16)),
+              Text(
+                value,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                  fontSize: 16,
+                ),
+              ),
               const SizedBox(height: 4),
               Text(title, style: const TextStyle(color: Colors.grey)),
             ],

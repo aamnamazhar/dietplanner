@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:dietplanner/data/menus.dart';
+import 'menu_details_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   final String restaurant;
@@ -9,84 +11,91 @@ class MenuScreen extends StatefulWidget {
 }
 
 class _MenuScreenState extends State<MenuScreen> {
-
-  final List<String> filters = ["All Items", "Vegetarian", "Vegan", "Gluten-Free"];
+  final List<String> filters = [
+    "All Items",
+    "Vegetarian",
+    "Vegan",
+    "Gluten-Free",
+  ];
   int selectedFilterIndex = 0;
 
-  final List<Map<String, dynamic>> menuItems = [
-    {
-      "name": "Sausage McGriddles® Meal",
-      "desc": "Sausage McGriddles®, Premium Roast Coffee (Small), Hash Browns",
-      "kcal": 575,
-      "price": 8.99,
-      "img": "https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.mcdonalds.com%2Fus%2Fen-us%2Fmeal%2Fsausage-mcgriddles-meal.html&psig=AOvVaw3hqMYOPUwDBdgP_2Uh1U04&ust=1758998598304000&source=images&cd=vfe&opi=89978449&ved=0CBUQjRxqFwoTCKCBsseK948DFQAAAAAdAAAAABAE"
-    },
-    {
-      "name": "Spicy McCrispy™",
-      "desc": "Spicy crispy chicken sandwich you were dreaming about.",
-      "kcal": 530,
-      "price": 3.49,
-      "img": "https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.mcdonalds.com%2Fus%2Fen-us%2Fproduct%2Fspicy-mccrispy-chicken-sandwich.html&psig=AOvVaw08a3gqfXu0m6NqIhpEvMmG&ust=1758998626213000&source=images&cd=vfe&opi=89978449&ved=0CBUQjRxqFwoTCPj29tOK948DFQAAAAAdAAAAABAH"
-    },
-    {
-      "name": "Big Mac",
-      "desc": "Two all-beef patties — it’s time to stop thinking.",
-      "kcal": 580,
-      "price": 8.99,
-      "img": "https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.mcdonalds.com%2Fgb%2Fen-gb%2Fproduct%2Fbig-mac.html&psig=AOvVaw1zvG-zONBLgIHlZCuzWzmI&ust=1758998649797000&source=images&cd=vfe&opi=89978449&ved=0CBUQjRxqFwoTCMikyd-K948DFQAAAAAdAAAAABAE"
-    },
-    {
-      "name": "Sausage Burrito",
-      "desc": "Breakfast Burrito with fluffy scrambled egg, pork sausage...",
-      "kcal": 310,
-      "price": 12.99,
-      "img": "https://www.google.com/url?sa=i&url=https%3A%2F%2Femilybites.com%2F2021%2F06%2Fturkey-sausage-breakfast-burritos.html&psig=AOvVaw3tXyeDDXlrS_Mxfbk6S7ki&ust=1758998684542000&source=images&cd=vfe&opi=89978449&ved=0CBUQjRxqFwoTCJi_ufGK948DFQAAAAAdAAAAABAE"
-    },
-  ];
-
-  // Cart
+  late List<Map<String, dynamic>> menuItems;
   List<Map<String, dynamic>> cart = [];
+  String searchQuery = "";
+
+  @override
+  void initState() {
+    super.initState();
+    menuItems = menuData[widget.restaurant] ?? [];
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Apply search filter
+    final filteredItems = menuItems
+        .where(
+          (item) =>
+              item["name"].toLowerCase().contains(searchQuery.toLowerCase()),
+        )
+        .toList();
+
     double total = cart.fold(0, (sum, item) => sum + item["price"]);
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text("${widget.restaurant} Menu"),
+        title: Text(
+          widget.restaurant,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Search bar
           Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: TextField(
               decoration: InputDecoration(
                 hintText: "Search menu items...",
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
-                fillColor: Colors.grey[200],
+                fillColor: Colors.grey.shade100,
+                contentPadding: EdgeInsets.zero,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
                 ),
               ),
+              onChanged: (val) {
+                setState(() {
+                  searchQuery = val;
+                });
+              },
             ),
           ),
+
+          const SizedBox(height: 12),
 
           // Filter chips
           SizedBox(
             height: 40,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: filters.length,
               itemBuilder: (context, index) {
                 bool isSelected = index == selectedFilterIndex;
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  padding: const EdgeInsets.only(right: 8),
                   child: ChoiceChip(
                     label: Text(filters[index]),
                     selected: isSelected,
@@ -95,10 +104,11 @@ class _MenuScreenState extends State<MenuScreen> {
                         selectedFilterIndex = index;
                       });
                     },
-                    selectedColor: Colors.orange,
-                    backgroundColor: Colors.grey[200]!,
+                    selectedColor: Colors.deepOrange,
+                    backgroundColor: Colors.grey.shade100,
                     labelStyle: TextStyle(
                       color: isSelected ? Colors.white : Colors.black,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 );
@@ -106,79 +116,205 @@ class _MenuScreenState extends State<MenuScreen> {
             ),
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
 
           // Menu list
           Expanded(
-            child: ListView.builder(
-              itemCount: menuItems.length,
-              itemBuilder: (context, index) {
-                final item = menuItems[index];
-                return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(10),
-                    leading: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(item["img"], width: 60, height: 60, fit: BoxFit.cover),
+            child: filteredItems.isEmpty
+                ? const Center(
+                    child: Text(
+                      "No items found.",
+                      style: TextStyle(color: Colors.grey),
                     ),
-                    title: Text(item["name"], style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(item["desc"], maxLines: 2, overflow: TextOverflow.ellipsis),
-                        const SizedBox(height: 4),
-                        Text("${item["kcal"]} kcal", style: TextStyle(color: Colors.grey[600])),
-                      ],
-                    ),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text("\$${item["price"]}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
-                        IconButton(
-                          icon: const Icon(Icons.add_circle, color: Colors.orange),
-                          onPressed: () {
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    itemCount: filteredItems.length,
+                    itemBuilder: (context, index) {
+                      final item = filteredItems[index];
+
+                      return GestureDetector(
+                        onTap: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => MenuDetailScreen(item: item),
+                            ),
+                          );
+
+                          if (result != null && result is Map) {
                             setState(() {
-                              cart.add(item);
+                              final selectedItem = result["item"];
+                              final qty = result["quantity"] ?? 1;
+                              for (int i = 0; i < qty; i++) {
+                                cart.add(selectedItem);
+                              }
                             });
-                          },
-                        )
-                      ],
-                    ),
+                          }
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade200),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 3,
+                                offset: Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Image
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child:
+                                      item["img"].toString().startsWith(
+                                        "assets/",
+                                      )
+                                      ? Image.asset(
+                                          item["img"],
+                                          width: 70,
+                                          height: 70,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : Image.network(
+                                          item["img"],
+                                          width: 70,
+                                          height: 70,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) =>
+                                                  const Icon(
+                                                    Icons.broken_image,
+                                                    size: 50,
+                                                  ),
+                                        ),
+                                ),
+                                const SizedBox(width: 12),
+
+                                // Text info
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        item["name"],
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        item["desc"],
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.black54,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        "${item["kcal"]} kcal",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                // Price
+                                Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      "\$${item["price"].toStringAsFixed(2)}",
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.deepOrange,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    InkWell(
+                                      onTap: () {
+                                        setState(() {
+                                          cart.add(item);
+                                        });
+                                      },
+                                      child: const Icon(
+                                        Icons.add_circle_outline,
+                                        color: Colors.deepOrange,
+                                        size: 24,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),
 
-      // Cart Bar
+      // Bottom cart bar
       bottomNavigationBar: cart.isEmpty
           ? null
           : Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: const BoxDecoration(
                 color: Colors.white,
-                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 5)],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 5,
+                    offset: Offset(0, -2),
+                  ),
+                ],
               ),
               child: Row(
                 children: [
-                  Text("${cart.length} items in cart"),
+                  Text(
+                    cart.length == 1
+                        ? "01 item in cart"
+                        : "${cart.length.toString().padLeft(2, '0')} items in cart",
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
                   const Spacer(),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
+                      backgroundColor: Colors.deepOrange,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(25),
                       ),
                     ),
                     onPressed: () {},
-                    child: Text("View Cart - \$${total.toStringAsFixed(2)}"),
-                  )
+                    child: Text(
+                      "View Cart - \$${total.toStringAsFixed(2)}",
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
                 ],
               ),
             ),

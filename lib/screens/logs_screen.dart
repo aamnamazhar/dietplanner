@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'create_log_screen.dart';
+import '../models/meal_model.dart';
 import '../widgets/nav_bar.dart';
+import 'create_log_screen.dart';
 
 class LogsScreen extends StatefulWidget {
   const LogsScreen({super.key});
@@ -11,11 +12,23 @@ class LogsScreen extends StatefulWidget {
 }
 
 class _LogsScreenState extends State<LogsScreen> {
-  final List<Map<String, dynamic>> _logs = [];
-
   @override
   Widget build(BuildContext context) {
-    final today = DateFormat('MMMM dd, yyyy').format(DateTime.now());
+    final today = DateTime.now();
+    final todayMeals = MealRepository().meals
+        .where(
+          (m) =>
+              m.date.year == today.year &&
+              m.date.month == today.month &&
+              m.date.day == today.day,
+        )
+        .toList();
+
+    final groupedMeals = _groupMealsByTime(todayMeals);
+    final totalCalories = todayMeals.fold<int>(
+      0,
+      (sum, meal) => sum + meal.calories,
+    );
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -25,15 +38,12 @@ class _LogsScreenState extends State<LogsScreen> {
         centerTitle: true,
         title: const Text(
           "Today's Log",
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
-            child: Center( 
+            child: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -43,10 +53,7 @@ class _LogsScreenState extends State<LogsScreen> {
                     style: TextStyle(fontSize: 12, color: Colors.black54),
                   ),
                   Text(
-                    _logs.fold<int>(
-                      0,
-                      (sum, log) => sum + (log['calories'] as int),
-                    ).toString(),
+                    totalCalories.toString(),
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -63,16 +70,12 @@ class _LogsScreenState extends State<LogsScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            today,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+            DateFormat('MMMM dd, yyyy').format(today),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
 
-          // If no logs, show empty message
-          if (_logs.isEmpty)
+          if (groupedMeals.isEmpty)
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(40),
@@ -83,33 +86,96 @@ class _LogsScreenState extends State<LogsScreen> {
               ),
             )
           else
-            ..._logs.map((log) => Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: _mealSection(
-                    context,
-                    title: log['meal'],
-                    time: log['time'],
-                    items: log['items'],
-                    tags: log['tags'],
-                    totalCalories: log['calories'],
-                    cost: log['price'],
+            ...groupedMeals.entries.map((entry) {
+              final section = entry.key;
+              final meals = entry.value;
+              final totalCalories = meals.fold<int>(
+                0,
+                (sum, meal) => sum + meal.calories,
+              );
+              final totalCost = meals.fold<double>(
+                0,
+                (sum, meal) => sum + meal.price,
+              );
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: Card(
+                  color: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                )),
+                  elevation: 1,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Section header
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              section,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              "$totalCalories cal • \$${totalCost.toStringAsFixed(2)}",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Meal items
+                        ...meals.map(
+                          (meal) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(meal.name),
+                                Text("${meal.calories} cal"),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        // Tags row
+                        Wrap(
+                          spacing: 6,
+                          children: [
+                            _buildTag("#Healthy", Colors.green),
+                            _buildTag("#QuickLunch", Colors.orange),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
         ],
       ),
 
-      // Floating Action Button
       floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.orange,
+        backgroundColor: Colors.deepOrange,
+        foregroundColor: Colors.white,
         onPressed: () async {
           final newLog = await Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const CreateLogScreen()),
           );
-
-          if (newLog != null) {
+          if (newLog != null && newLog is Meal) {
             setState(() {
-              _logs.add(newLog);
+              MealRepository().addMeal(newLog);
             });
           }
         },
@@ -130,7 +196,6 @@ class _LogsScreenState extends State<LogsScreen> {
               Navigator.pushReplacementNamed(context, '/goals');
               break;
             case 3:
-            
               break;
           }
         },
@@ -138,90 +203,43 @@ class _LogsScreenState extends State<LogsScreen> {
     );
   }
 
-  Widget _mealSection(
-    BuildContext context, {
-    required String title,
-    required String time,
-    required List<Map<String, Object>> items,
-    required List<String> tags,
-    required int totalCalories,
-    required double cost,
-  }) {
-    return Card(
-      color: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 1,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Title + Time
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "$title\n$time",
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Icon(Icons.more_vert),
-              ],
-            ),
-            const SizedBox(height: 12),
+  Map<String, List<Meal>> _groupMealsByTime(List<Meal> meals) {
+    final Map<String, List<Meal>> groups = {
+      "Breakfast": [],
+      "Lunch": [],
+      "Dinner": [],
+      "Snack": [],
+    };
 
-            // Food items
-            ...items.map((item) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(item["name"].toString()),
-                      Text("${item["cal"]} cal"),
-                    ],
-                  ),
-                )),
+    for (var meal in meals) {
+      final hour = meal.date.hour;
+      if (hour >= 5 && hour < 11) {
+        groups["Breakfast"]!.add(meal);
+      } else if (hour >= 11 && hour < 16) {
+        groups["Lunch"]!.add(meal);
+      } else if (hour >= 16 && hour < 22) {
+        groups["Dinner"]!.add(meal);
+      } else {
+        groups["Snack"]!.add(meal);
+      }
+    }
 
-            const SizedBox(height: 8),
+    groups.removeWhere((_, list) => list.isEmpty);
+    return groups;
+  }
 
-            // Tags
-            Wrap(
-              spacing: 8,
-              children: tags
-                  .map((tag) => Chip(
-                        label: Text(tag),
-                        backgroundColor: Colors.deepOrange.shade50,
-                        labelStyle: const TextStyle(
-                          color: Colors.deepOrange,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ))
-                  .toList(),
-            ),
-
-            const SizedBox(height: 8),
-
-            // Total calories + cost
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "$totalCalories cal",
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  "\$$cost",
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-          ],
+  Widget _buildTag(String text, Color color) {
+    return Chip(
+      label: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
         ),
       ),
+      backgroundColor: color.withOpacity(0.1),
+      side: BorderSide.none,
     );
   }
 }

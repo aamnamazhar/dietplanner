@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
+import '../models/meal_model.dart';
+
 class CreateLogScreen extends StatefulWidget {
   const CreateLogScreen({super.key});
 
@@ -17,10 +19,11 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
 
   // Predefined tags
   final List<String> predefinedTags = [
-    "Healthy",
-    "HomeMade",
-    "QuickLunch",
-    "CheatDay"
+    "#Healthy",
+    "#HomeMade",
+    "#QuickLunch",
+    "#CheatDay",
+    "#Office",
   ];
 
   // Selected tags
@@ -48,22 +51,39 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
 
   void _saveLog() {
     final mealName = _mealController.text.trim();
-    final price = _priceController.text.trim();
-    final tags = selectedTags;
+    final priceText = _priceController.text.trim();
 
-    if (mealName.isEmpty || price.isEmpty) {
+    if (mealName.isEmpty || priceText.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please fill all required fields")),
       );
       return;
     }
 
-    debugPrint("Meal: $mealName");
-    debugPrint("Price: $price");
-    debugPrint("Tags: $tags");
-    debugPrint("Image: ${_image?.path}");
+    final double? price = double.tryParse(priceText);
+    if (price == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Enter a valid price")));
+      return;
+    }
 
-    Navigator.pop(context);
+    // Create new Meal object
+    final newMeal = Meal(
+      name: mealName,
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fats: 0,
+      price: price,
+      date: DateTime.now(),
+      tags: selectedTags,
+    );
+
+    // Add to repository
+    MealRepository().addMeal(newMeal);
+
+    Navigator.pop(context, newMeal);
   }
 
   @override
@@ -79,10 +99,7 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
         ),
         title: const Text(
           "Create Log",
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
@@ -91,7 +108,7 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Upload Image
+            // Image
             Center(
               child: InkWell(
                 onTap: _pickImage,
@@ -100,10 +117,15 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
                     CircleAvatar(
                       radius: 40,
                       backgroundColor: Colors.grey.shade200,
-                      backgroundImage: _image != null ? FileImage(_image!) : null,
+                      backgroundImage: _image != null
+                          ? FileImage(_image!)
+                          : null,
                       child: _image == null
-                          ? const Icon(Icons.add_a_photo,
-                              size: 30, color: Colors.grey)
+                          ? const Icon(
+                              Icons.add_a_photo,
+                              size: 30,
+                              color: Colors.grey,
+                            )
                           : null,
                     ),
                     const SizedBox(height: 8),
@@ -118,7 +140,7 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
 
             const SizedBox(height: 24),
 
-            // Meal Name
+            //  Meal Name
             const Text("Meal Name"),
             const SizedBox(height: 6),
             TextField(
@@ -147,7 +169,8 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
               onSubmitted: (value) {
                 if (value.isNotEmpty) {
                   setState(() {
-                    selectedTags.add(value);
+                    final tag = value.startsWith('#') ? value : '#$value';
+                    selectedTags.add(tag);
                     _tagsController.clear();
                   });
                 }
@@ -196,14 +219,18 @@ class _CreateLogScreenState extends State<CreateLogScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.deepOrange,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 onPressed: _saveLog,
                 child: const Text(
                   "Save",
-                  
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),

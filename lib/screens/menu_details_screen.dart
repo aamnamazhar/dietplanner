@@ -1,9 +1,9 @@
+import 'package:dietplanner/models/meal_model.dart';
 import 'package:flutter/material.dart';
 
 class MenuDetailScreen extends StatefulWidget {
   final Map<String, dynamic> item;
-
-  const MenuDetailScreen({super.key, required this.item});
+  const MenuDetailScreen({Key? key, required this.item}) : super(key: key);
 
   @override
   State<MenuDetailScreen> createState() => _MenuDetailScreenState();
@@ -17,171 +17,233 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
     final item = widget.item;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Menu Details"),
+        title: const Text(
+          "Menu Details",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Item Image
+            // Image
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.network(
+              child: _buildMenuImage(
                 item["img"],
                 width: double.infinity,
-                height: 180,
-                fit: BoxFit.cover,
+                height: 200,
               ),
             ),
             const SizedBox(height: 16),
 
-            // Title + description
+            // Title & Description
             Text(
               item["name"],
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
             const SizedBox(height: 4),
-            Text(item["desc"], style: TextStyle(color: Colors.grey[600])),
-
-            const SizedBox(height: 20),
+            Text(item["desc"], style: const TextStyle(color: Colors.black54)),
+            const SizedBox(height: 16),
 
             // Nutrition Info
+            const Text(
+              "Nutrition Information",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.orange.shade50,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.info, color: Colors.orange),
-                      SizedBox(width: 6),
-                      Text("Nutrition Information",
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16)),
-                    ],
+                  _nutritionBox("${item["kcal"]}", "Calories", Colors.orange),
+                  _nutritionBox(
+                    "${item["protein"]}g",
+                    "Protein",
+                    Colors.orange,
                   ),
-                  const SizedBox(height: 12),
-                  GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 2,
-                    childAspectRatio: 3,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    children: [
-                      _nutritionBox("${item["kcal"]}", "Calories"),
-                      _nutritionBox("13g", "Protein"),
-                      _nutritionBox("60g", "Carbs"),
-                      _nutritionBox("32g", "Fat"),
-                    ],
-                  ),
+                  _nutritionBox("${item["carbs"]}g", "Carbs", Colors.blue),
+                  _nutritionBox("${item["fats"]}g", "Fat", Colors.red),
                 ],
               ),
             ),
-
             const SizedBox(height: 20),
 
-            // Price Section
+            // Estimated Price
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text("Estimated Price:",
-                    style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(width: 8),
-                Text("\$${item["price"]}",
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
-                const Spacer(),
-                const Icon(Icons.attach_money, color: Colors.green),
+                const Text(
+                  "Estimated Price",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  "\$${(item["price"] * quantity).toStringAsFixed(2)}",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                    fontSize: 16,
+                  ),
+                ),
               ],
             ),
-
             const SizedBox(height: 20),
 
             // Serving Size
-            const Text("Serving Size",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 8),
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.remove_circle, color: Colors.orange),
-                  onPressed: () {
-                    if (quantity > 1) {
+                const Text(
+                  "Serving Size",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Row(
+                  children: [
+                    _roundButton(Icons.remove, () {
                       setState(() {
-                        quantity--;
+                        if (quantity > 1) quantity--;
                       });
-                    }
-                  },
-                ),
-                Text(
-                  "$quantity portion",
-                  style: const TextStyle(fontSize: 16),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add_circle, color: Colors.orange),
-                  onPressed: () {
-                    setState(() {
-                      quantity++;
-                    });
-                  },
+                    }),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        quantity.toString(),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    _roundButton(Icons.add, () {
+                      setState(() {
+                        quantity++;
+                      });
+                    }),
+                  ],
                 ),
               ],
             ),
+            const SizedBox(height: 30),
 
-            const SizedBox(height: 80),
+            // Add to Meal Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepOrange,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () {
+                  MealRepository().addMeal(
+                    Meal(
+                      name: item["name"],
+                      calories: item["kcal"] * quantity,
+                      protein: (item["protein"] ?? 0) * quantity,
+                      carbs: (item["carbs"] ?? 0) * quantity,
+                      fats: (item["fats"] ?? 0) * quantity,
+                      price: (item["price"] ?? 0) * quantity,
+                      date: DateTime.now(),
+                      tags: [],
+                    ),
+                  );
+
+                  Navigator.pop(context, true);
+                },
+                child: const Text(
+                  "+ Add to Meal",
+                  style: TextStyle(fontSize: 16, color: Colors.white),
+                ),
+              ),
+            ),
           ],
-        ),
-      ),
-
-      // Bottom Button
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.orange,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            padding: const EdgeInsets.symmetric(vertical: 16),
-          ),
-          onPressed: () {
-            Navigator.pop(context, {"item": item, "quantity": quantity});
-          },
-          child: const Text("Add to Meal",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         ),
       ),
     );
   }
 
-  Widget _nutritionBox(String value, String label) {
+  /// Image Loader
+  Widget _buildMenuImage(String path, {double? width, double? height}) {
+    final isAsset = path.startsWith("assets/");
+    return isAsset
+        ? Image.asset(
+            path,
+            width: width,
+            height: height,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) =>
+                const Icon(Icons.broken_image, size: 100),
+          )
+        : Image.network(
+            path,
+            width: width,
+            height: height,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) =>
+                const Icon(Icons.broken_image, size: 100),
+          );
+  }
+
+  /// Nutrition Box Widget
+  Widget _nutritionBox(String value, String label, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Quantity Buttons
+  Widget _roundButton(IconData icon, VoidCallback onTap) {
     return Container(
-      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 3, offset: Offset(0, 2))
-        ],
+        shape: BoxShape.circle,
+        color: Colors.grey.shade200,
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(value,
-              style:
-                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-        ],
-      ),
+      child: IconButton(onPressed: onTap, icon: Icon(icon, size: 18)),
     );
   }
 }
